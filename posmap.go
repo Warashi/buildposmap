@@ -10,21 +10,23 @@ import (
 	"golang.org/x/tools/go/ast/inspector"
 )
 
+type PosMap map[token.Pos][]ast.Node
+
 var Analyzer = &analysis.Analyzer{
 	Name:             "buildposmap",
-	Doc:              "build map[token.Pos][]ast.Node",
+	Doc:              "build mapping between token.Pos and ast.Node",
 	Run:              run,
 	RunDespiteErrors: true,
 	Requires:         []*analysis.Analyzer{inspect.Analyzer},
-	ResultType:       reflect.TypeOf(map[token.Pos][]ast.Node(nil)),
+	ResultType:       reflect.TypeOf(PosMap(nil)),
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
 	return New(pass), nil
 }
 
-func New(pass *analysis.Pass) map[token.Pos][]ast.Node {
-	posMap := make(map[token.Pos][]ast.Node)
+func New(pass *analysis.Pass) PosMap {
+	posMap := make(PosMap)
 	pass.ResultOf[inspect.Analyzer].(*inspector.Inspector).Preorder(nil, func(node ast.Node) {
 		for i := node.Pos(); i <= node.End(); i++ {
 			posMap[i] = append(posMap[i], node)
@@ -33,7 +35,7 @@ func New(pass *analysis.Pass) map[token.Pos][]ast.Node {
 	return posMap
 }
 
-func Node[T ast.Node](posMap map[token.Pos][]ast.Node, pos token.Pos) (node T, ok bool) {
+func Node[T ast.Node](posMap PosMap, pos token.Pos) (node T, ok bool) {
 	for i := pos; i > 0; i-- {
 		stack := posMap[i]
 		if len(stack) == 0 {
